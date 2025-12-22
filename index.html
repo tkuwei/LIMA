@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>樹新店記帳</title>
+    <title>樹新店記帳系統</title>
     <link rel="apple-touch-icon" href="logo.png">
     <link rel="icon" href="logo.png">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
     <style>
         body { font-family: 'PingFang TC', sans-serif; background-color: #f8fafc; }
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
@@ -22,6 +23,7 @@
         .bg-income-mode { background-color: #f0fdf4 !important; border-color: #bbf7d0 !important; }
         .bg-expense-mode { background-color: #fef2f2 !important; border-color: #fecaca !important; }
         .loading-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; justify-content: center; align-items: center; color: white; flex-direction: column; }
+        .editing-mode { box-shadow: 0 0 20px rgba(249, 115, 22, 0.4); border: 2px solid #f97316 !important; }
     </style>
 </head>
 <body class="p-2 md:p-6">
@@ -48,111 +50,156 @@
                     <div id="calendarGrid" class="calendar-grid"></div>
                 </div>
                 <div class="bg-white p-5 rounded-3xl shadow-lg border">
-                    <h4 class="font-black text-slate-700 mb-3 flex items-center"><i class="fas fa-list-ul mr-2 text-orange-500"></i> 當日明細</h4>
-                    <div id="dayDetailList" class="space-y-2 max-h-60 overflow-y-auto"><p class="text-slate-400 text-sm text-center py-4">載入中...</p></div>
+                    <h4 class="font-black text-slate-700 mb-3 flex items-center">
+                        <i class="fas fa-list-ul mr-2 text-orange-500"></i> 當日明細 (點擊即可修改)
+                    </h4>
+                    <div id="dayDetailList" class="space-y-2 max-h-60 overflow-y-auto">
+                        <p class="text-slate-400 text-sm text-center py-4">載入中...</p>
+                    </div>
                 </div>
             </div>
+
             <div class="flex-1 space-y-4">
                 <div id="inputCard" class="bg-white p-6 rounded-3xl shadow-lg border transition-all duration-300 bg-income-mode">
                     <div class="flex justify-between items-end mb-6">
-                        <div><p class="text-slate-500 text-xs font-bold uppercase">Recording on</p><h3 id="displaySelectedDate" class="text-3xl font-black text-slate-800">日期</h3></div>
-                        <span id="currentStatusTag" class="bg-green-600 text-white px-4 py-1 rounded-full text-xs font-bold">收入模式</span>
+                        <div>
+                            <p class="text-slate-500 text-xs font-bold uppercase tracking-widest">Selected Date</p>
+                            <h3 id="displaySelectedDate" class="text-3xl font-black text-slate-800">日期</h3>
+                        </div>
+                        <span id="currentStatusTag" class="bg-green-600 text-white px-4 py-1 rounded-full text-xs font-bold shadow-sm">收入模式</span>
                     </div>
+                    
+                    <div id="editNotice" class="hidden mb-4 p-2 bg-orange-100 text-orange-700 text-sm font-bold rounded-lg text-center animate-pulse">
+                        ⚠️ 正在編輯現有紀錄
+                    </div>
+
                     <div class="grid grid-cols-2 gap-3 mb-6">
                         <button onclick="changeMode('income')" id="btn-income" class="py-4 rounded-xl font-bold mode-active shadow-md">記收入</button>
                         <button onclick="changeMode('expense')" id="btn-expense" class="py-4 rounded-xl font-bold bg-white/50 text-slate-400 border border-slate-200">記支出</button>
                     </div>
+
                     <div class="space-y-4">
                         <select id="inputCategory" class="w-full bg-white border rounded-xl p-4 text-lg font-bold outline-none shadow-sm"></select>
                         <input type="number" id="inputAmount" inputmode="numeric" placeholder="請輸入金額" class="w-full bg-white border rounded-xl p-5 text-4xl font-black text-orange-600 outline-none shadow-inner">
                         <input type="text" id="inputNote" placeholder="備註..." class="w-full bg-white border rounded-xl p-4 outline-none shadow-sm">
-                        <button onclick="saveRecord()" class="w-full bg-slate-900 text-white font-black py-5 rounded-xl text-xl shadow-xl hover:bg-black transition active:scale-95">確認存入雲端</button>
+                        <div class="flex gap-2">
+                            <button onclick="saveRecord()" class="flex-1 bg-slate-900 text-white font-black py-5 rounded-xl text-xl shadow-xl hover:bg-black transition active:scale-95">確認存入雲端</button>
+                            <button id="cancelEditBtn" onclick="resetForm()" class="hidden px-6 bg-slate-200 text-slate-600 font-bold py-5 rounded-xl hover:bg-slate-300 transition">取消</button>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
         <div id="section-report" class="hidden space-y-6">
-            <div class="bg-white p-5 rounded-3xl shadow border flex flex-wrap gap-4 items-center">
-                <div class="flex items-center gap-2"><span class="font-bold text-slate-500">年份：</span><select id="reportYearSelect" onchange="renderReports()" class="bg-slate-100 rounded-lg p-2 font-black"></select></div>
-                <div class="flex items-center gap-2"><span class="font-bold text-slate-500">月份：</span><select id="reportMonthSelect" onchange="renderReports()" class="bg-slate-100 rounded-lg p-2 font-black"></select></div>
+            <div class="bg-white p-5 rounded-3xl shadow border flex flex-wrap gap-4 items-center justify-between">
+                <div class="flex flex-wrap gap-4 items-center">
+                    <div class="flex items-center gap-2">
+                        <span class="font-bold text-slate-500">年份：</span>
+                        <select id="reportYearSelect" onchange="renderReports()" class="bg-slate-100 rounded-lg p-2 font-black"></select>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="font-bold text-slate-500">月份：</span>
+                        <select id="reportMonthSelect" onchange="renderReports()" class="bg-slate-100 rounded-lg p-2 font-black"></select>
+                    </div>
+                </div>
+                <div class="flex bg-slate-100 p-1 rounded-xl">
+                    <button onclick="changeReportView('month')" id="view-month" class="px-4 py-2 rounded-lg font-bold transition-all bg-white shadow-sm text-orange-600">月線 (12個月)</button>
+                    <button onclick="changeReportView('week')" id="view-week" class="px-4 py-2 rounded-lg font-bold transition-all text-slate-500">週線 (本月趨勢)</button>
+                </div>
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div class="lg:col-span-2 bg-white p-6 rounded-3xl shadow border">
-                    <h3 class="text-lg font-black text-slate-800 mb-4 border-l-4 border-blue-500 pl-3"><span id="trendTitleYear"></span> 年度收支利趨勢</h3>
-                    <div style="height: 300px;"><canvas id="chartYearTrend"></canvas></div>
+                    <h3 class="text-lg font-black text-slate-800 mb-4 border-l-4 border-blue-500 pl-3">
+                        <span id="chartMainTitle">數據趨勢</span>
+                    </h3>
+                    <div style="height: 350px;"><canvas id="chartYearTrend"></canvas></div>
                 </div>
                 <div class="bg-white p-6 rounded-3xl shadow border flex flex-col justify-center space-y-4">
-                    <h3 class="text-md font-black text-slate-500 text-center uppercase tracking-widest">年度數據總結</h3>
-                    <div id="yearStatsBanner" class="space-y-3"></div>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="bg-white p-6 rounded-3xl shadow border">
-                    <h3 class="text-lg font-black text-slate-800 mb-4 border-l-4 border-orange-500 pl-3"><span id="costTitleMonth"></span> 月成本構成</h3>
-                    <div style="height: 250px;"><canvas id="chartCost"></canvas></div>
-                </div>
-                <div class="bg-white p-6 rounded-3xl shadow border flex flex-col justify-center">
-                    <h3 class="text-lg font-black text-slate-800 mb-6 text-center underline decoration-orange-300 decoration-4"><span id="statsMonthLabel"></span> 月收支利統計</h3>
-                    <div id="statsSummary" class="space-y-4"></div>
+                    <h3 class="text-md font-black text-slate-500 text-center uppercase tracking-widest">週期數據總結</h3>
+                    <div id="periodStatsBanner" class="space-y-4"></div>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // 1. 基本設定
+        // 1. 核心變數與設定
         const CLOUD_URL = "https://script.google.com/macros/s/AKfycbwXSauQ1RB-4CQUBHskHuHYmdTERDczNjG-qEhV-jK8ME7lb20ZVum_QW_aNwbEKOKb/exec";
         
-        // 修正日期初始化，確保是台灣當地日期
         let selectedDate = new Date().toLocaleDateString('sv'); 
         let viewDate = new Date();
         let mode = 'income';
         let db = JSON.parse(localStorage.getItem('snack_db_v12')) || [];
-        let chartTrend = null, chartCost = null;
+        let chartTrend = null;
+        let editingId = null;
+        let reportViewMode = 'month'; 
 
         const categories = {
             income: ['現金收入', 'FoodPanda', 'Uber Eats', '其他收入'],
             expense: {
-                '日支出 (經常支出)': ['食材', '耗材', '薪資', '雜項'],
+                '日支出 (經常支出)': ['食材', '耗材', '薪資 (日)', '雜項'],
                 '月支出 (浮動支出)': ['米糧', '蔬菜', '火鍋料', '調味料', 'FoodPanda', 'Uber Eats', '稅務', '維修'],
-                '月支出 (固定支出)': ['租金', '水費', '電費', '瓦斯類', '電話費', '清潔維護費']
+                '月支出 (固定支出)': ['租金', '水費', '電費', '瓦斯類', '電話費', '清潔維護費', '薪資 (月)']
             }
         };
 
         const reportMap = {
-            '薪資': '人事', '食材': '材料', '耗材': '材料', '米糧': '材料', '蔬菜': '材料', '火鍋料': '材料', '調味料': '材料',
+            '薪資 (日)': '人事', '薪資 (月)': '人事', 
+            '食材': '材料', '耗材': '材料', '米糧': '材料', '蔬菜': '材料', '火鍋料': '材料', '調味料': '材料',
             '租金': '固定成本', '水費': '固定成本', '電費': '固定成本', '瓦斯類': '固定成本', '電話費': '固定成本', '清潔維護費': '固定成本'
         };
 
-        // 2. 核心功能：雲端讀取
+        // 2. 雲端同步與資料校正 (日期防跑偏邏輯)
         async function loadCloudData() {
             document.getElementById('loading').style.display = 'flex';
-            document.getElementById('loading-text').innerText = "正在從雲端同步...";
             try {
                 const response = await fetch(CLOUD_URL);
                 const cloudData = await response.json();
                 if (Array.isArray(cloudData)) {
-                    // 強制截斷日期字串，防止時區偏移
                     db = cloudData.map((r, index) => {
-                        let cleanDate = String(r.date).substring(0, 10);
+                        let rawDate = r.date ? String(r.date) : "";
+                        let cleanDate = rawDate.includes("T") ? rawDate.split("T")[0] : rawDate.substring(0, 10);
                         return {
                             ...r,
                             date: cleanDate,
                             amount: Number(r.amount),
-                            id: r.id || Date.now() + index
+                            id: r.id || (Date.now() + index)
                         };
                     });
                     localStorage.setItem('snack_db_v12', JSON.stringify(db));
                     updateUI();
                 }
-            } catch (e) {
-                console.error("雲端載入失敗，使用本地資料");
-            } finally {
-                document.getElementById('loading').style.display = 'none';
-            }
+            } catch (e) { console.error("同步失敗"); }
+            finally { document.getElementById('loading').style.display = 'none'; }
+        }
+
+        // 3. 記帳與編輯邏輯
+        function editRecord(id) {
+            const item = db.find(r => r.id == id);
+            if (!item) return;
+            editingId = id;
+            selectedDate = item.date;
+            changeMode(item.type === '收入' ? 'income' : 'expense');
+            document.getElementById('inputCategory').value = item.category;
+            document.getElementById('inputAmount').value = item.amount;
+            document.getElementById('inputNote').value = item.note;
+            document.getElementById('inputCard').classList.add('editing-mode');
+            document.getElementById('editNotice').classList.remove('hidden');
+            document.getElementById('cancelEditBtn').classList.remove('hidden');
+            updateUI();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function resetForm() {
+            editingId = null;
+            document.getElementById('inputAmount').value = '';
+            document.getElementById('inputNote').value = '';
+            document.getElementById('inputCard').classList.remove('editing-mode');
+            document.getElementById('editNotice').classList.add('hidden');
+            document.getElementById('cancelEditBtn').classList.add('hidden');
+            updateUI();
         }
 
         async function saveRecord() {
@@ -165,39 +212,154 @@
                 type: mode==='income'?'收入':'支出', 
                 category: document.getElementById('inputCategory').value, 
                 amount: amount, 
-                note: document.getElementById('inputNote').value 
+                note: document.getElementById('inputNote').value,
+                id: editingId || Date.now()
             };
 
             document.getElementById('loading').style.display = 'flex';
-            document.getElementById('loading-text').innerText = "正在同步雲端...";
-
             try {
-                // 本地預先存儲
-                const id = Date.now();
-                db.push({ ...payload, id });
+                if (editingId) {
+                    const idx = db.findIndex(r => r.id == editingId);
+                    if(idx !== -1) db[idx] = payload;
+                } else { db.push(payload); }
+                
                 localStorage.setItem('snack_db_v12', JSON.stringify(db));
+                await fetch(CLOUD_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
+                resetForm();
+            } catch (e) { alert('儲存失敗'); }
+            finally { document.getElementById('loading').style.display = 'none'; }
+        }
 
-                // 發送到 Google (使用 no-cors 提高跨載具成功率)
-                await fetch(CLOUD_URL, { 
-                    method: 'POST', 
-                    mode: 'no-cors',
-                    body: JSON.stringify(payload) 
-                });
+        // 4. UI 渲染邏輯
+        function updateUI() {
+            const select = document.getElementById('inputCategory');
+            if (mode === 'income') {
+                select.innerHTML = categories.income.map(c => `<option value="${c}">${c}</option>`).join('');
+            } else {
+                let html = '';
+                for (const [group, items] of Object.entries(categories.expense)) {
+                    html += `<optgroup label="${group}">${items.map(c => `<option value="${c}">${c}</option>`).join('')}</optgroup>`;
+                }
+                select.innerHTML = html;
+            }
+            document.getElementById('displaySelectedDate').innerText = selectedDate;
+            renderCalendar();
+            renderDayDetails();
+        }
 
-                // 清空欄位
-                amountInput.value = '';
-                document.getElementById('inputNote').value = '';
-                updateUI();
-                amountInput.focus();
-            } catch (e) { 
-                console.error(e);
-                alert('連線稍微遲緩，資料已保存在手機，稍後會自動同步。'); 
-            } finally { 
-                document.getElementById('loading').style.display = 'none'; 
+        function renderCalendar() {
+            const grid = document.getElementById('calendarGrid'), year = viewDate.getFullYear(), month = viewDate.getMonth();
+            grid.innerHTML = ''; 
+            document.getElementById('monthDisplay').innerText = `${year}年 ${month + 1}月`;
+            const firstDay = new Date(year, month, 1).getDay(), daysInMonth = new Date(year, month + 1, 0).getDate();
+            const weekdays = ['日','一','二','三','四','五','六'];
+            weekdays.forEach(w => grid.innerHTML += `<div class="text-center text-[10px] font-bold text-slate-300 pb-2">${w}</div>`);
+            for(let i=0; i<firstDay; i++) grid.innerHTML += `<div></div>`;
+            for(let d=1; d<=daysInMonth; d++) {
+                const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                const hasData = db.some(r => String(r.date) === dateStr);
+                grid.innerHTML += `<div onclick="selectDate('${dateStr}')" class="day-box ${hasData?'has-data':''} ${selectedDate===dateStr?'day-active':''}">${d}</div>`;
             }
         }
 
-        function switchMainTab(target) {
+        function renderDayDetails() {
+            const list = document.getElementById('dayDetailList');
+            const dayData = db.filter(r => String(r.date).startsWith(selectedDate));
+            if(dayData.length === 0) { list.innerHTML = `<p class="text-slate-400 text-sm text-center py-4">無紀錄</p>`; return; }
+            list.innerHTML = dayData.map(r => `
+                <div onclick="editRecord(${r.id})" class="cursor-pointer group flex justify-between items-center p-3 rounded-xl border transition-all hover:bg-white hover:shadow-sm ${r.type==='收入'?'bg-green-50/50 border-green-100':'bg-red-50/50 border-red-100'}">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded ${r.type==='收入'?'bg-green-200 text-green-700':'bg-red-200 text-red-700'}">${r.category}</span>
+                            <span class="font-black text-slate-700">NT$ ${Number(r.amount).toLocaleString()}</span>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-1">${r.note || ''}</p>
+                    </div>
+                    <i class="fas fa-edit text-slate-200 group-hover:text-orange-400 transition"></i>
+                </div>
+            `).join('');
+        }
+
+        // 5. 經營報表邏輯 (收支利數據看板 & 週月線切換)
+        function changeReportView(view) {
+            reportViewMode = view;
+            const isMonth = view === 'month';
+            document.getElementById('view-month').className = isMonth ? "px-4 py-2 rounded-lg font-bold transition-all bg-white shadow-sm text-orange-600" : "px-4 py-2 rounded-lg font-bold transition-all text-slate-500";
+            document.getElementById('view-week').className = !isMonth ? "px-4 py-2 rounded-lg font-bold transition-all bg-white shadow-sm text-orange-600" : "px-4 py-2 rounded-lg font-bold transition-all text-slate-500";
+            renderReports();
+        }
+
+        function renderReports() {
+            const y = document.getElementById('reportYearSelect').value;
+            const m = document.getElementById('reportMonthSelect').value;
+            const ctx = document.getElementById('chartYearTrend').getContext('2d');
+
+            let labels = [], inData = [], outData = [], profitData = [];
+            let totalIn = 0, totalOut = 0;
+
+            if (reportViewMode === 'month') {
+                document.getElementById('chartMainTitle').innerText = `${y} 年度趨勢 (月線)`;
+                for (let i = 1; i <= 12; i++) {
+                    const prefix = `${y}-${String(i).padStart(2, '0')}`;
+                    let mi = 0, mo = 0;
+                    db.filter(r => String(r.date).startsWith(prefix)).forEach(r => {
+                        if (r.type === '收入') mi += Number(r.amount); else mo += Number(r.amount);
+                    });
+                    labels.push(`${i}月`); inData.push(mi); outData.push(mo); profitData.push(mi - mo);
+                    totalIn += mi; totalOut += mo;
+                }
+            } else {
+                document.getElementById('chartMainTitle').innerText = `${y}年 ${m}月 趨勢 (週線)`;
+                const weeks = [
+                    { name: '1-7日', s: 1, e: 7 }, { name: '8-14日', s: 8, e: 14 }, 
+                    { name: '15-21日', s: 15, e: 21 }, { name: '22日+', s: 22, e: 31 }
+                ];
+                weeks.forEach(w => {
+                    let mi = 0, mo = 0;
+                    db.filter(r => {
+                        const d = new Date(r.date);
+                        return d.getFullYear() == y && (d.getMonth() + 1) == m && d.getDate() >= w.s && d.getDate() <= w.e;
+                    }).forEach(r => {
+                        if (r.type === '收入') mi += Number(r.amount); else mo += Number(r.amount);
+                    });
+                    labels.push(w.name); inData.push(mi); outData.push(mo); profitData.push(mi - mo);
+                    totalIn += mi; totalOut += mo;
+                });
+            }
+
+            // 更新數據看板
+            document.getElementById('periodStatsBanner').innerHTML = `
+                <div class="p-4 bg-green-50 border-l-4 border-green-500 rounded-r-xl shadow-sm">
+                    <p class="text-[10px] text-green-600 font-bold uppercase tracking-widest">總收入</p>
+                    <p class="text-2xl font-black text-green-800">NT$ ${totalIn.toLocaleString()}</p>
+                </div>
+                <div class="p-4 bg-red-50 border-l-4 border-red-500 rounded-r-xl shadow-sm">
+                    <p class="text-[10px] text-red-600 font-bold uppercase tracking-widest">總支出</p>
+                    <p class="text-2xl font-black text-red-800">NT$ ${totalOut.toLocaleString()}</p>
+                </div>
+                <div class="p-4 bg-blue-50 border-l-4 border-blue-500 rounded-r-xl shadow-sm">
+                    <p class="text-[10px] text-blue-600 font-bold uppercase tracking-widest">淨利潤</p>
+                    <p class="text-2xl font-black text-blue-800">NT$ ${(totalIn - totalOut).toLocaleString()}</p>
+                </div>
+            `;
+
+            if (chartTrend) chartTrend.destroy();
+            chartTrend = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: '收入', data: inData, backgroundColor: '#22c55e', borderRadius: 4 },
+                        { label: '支出', data: outData, backgroundColor: '#ef4444', borderRadius: 4 },
+                        { label: '純利', data: profitData, type: 'line', borderColor: '#3b82f6', tension: 0.3, borderWidth: 3, pointRadius: 4 }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+            });
+        }
+
+            // 6. 其他輔助功能 (切換分頁、日期選擇、模式切換)
+            function switchMainTab(target) {
             document.getElementById('section-record').classList.toggle('hidden', target !== 'record');
             document.getElementById('section-report').classList.toggle('hidden', target !== 'report');
             document.getElementById('tab-record').classList.toggle('tab-active', target === 'record');
@@ -220,133 +382,20 @@
 
         function changeMode(m) {
             mode = m;
-            const card = document.getElementById('inputCard'), tag = document.getElementById('currentStatusTag');
             const isInc = m === 'income';
-            card.className = `bg-white p-6 rounded-3xl shadow-lg border transition-all duration-300 ${isInc?'bg-income-mode':'bg-expense-mode'}`;
-            tag.innerText = isInc ? "收入模式" : "支出模式";
-            tag.className = `${isInc?'bg-green-600':'bg-red-600'} text-white px-4 py-1 rounded-full text-xs font-bold`;
+            document.getElementById('inputCard').className = `bg-white p-6 rounded-3xl shadow-lg border transition-all duration-300 ${isInc?'bg-income-mode':'bg-expense-mode'} ${editingId ? 'editing-mode' : ''}`;
+            document.getElementById('currentStatusTag').innerText = isInc ? "收入模式" : "支出模式";
+            document.getElementById('currentStatusTag').className = `${isInc?'bg-green-600':'bg-red-600'} text-white px-4 py-1 rounded-full text-xs font-bold`;
             document.getElementById('btn-income').className = isInc ? "py-4 rounded-xl font-bold mode-active shadow-md" : "py-4 rounded-xl font-bold bg-white/50 text-slate-400 border border-slate-200";
             document.getElementById('btn-expense').className = !isInc ? "py-4 rounded-xl font-bold mode-active shadow-md" : "py-4 rounded-xl font-bold bg-white/50 text-slate-400 border border-slate-200";
             updateUI();
-        }
-
-        function updateUI() {
-            const select = document.getElementById('inputCategory');
-            if (mode === 'income') { select.innerHTML = categories.income.map(c => `<option value="${c}">${c}</option>`).join(''); }
-            else {
-                let html = '';
-                for (const [group, items] of Object.entries(categories.expense)) {
-                    html += `<optgroup label="${group}">${items.map(c => `<option value="${c}">${c}</option>`).join('')}</optgroup>`;
-                }
-                select.innerHTML = html;
-            }
-            document.getElementById('displaySelectedDate').innerText = selectedDate;
-            renderCalendar();
-            renderDayDetails();
-        }
-
-        function renderDayDetails() {
-            const list = document.getElementById('dayDetailList');
-            const dayData = db.filter(r => String(r.date).startsWith(selectedDate));
-            if(dayData.length === 0) { list.innerHTML = `<p class="text-slate-400 text-sm text-center py-4">本日無紀錄</p>`; return; }
-            list.innerHTML = dayData.map(r => `
-                <div class="flex justify-between items-center p-3 rounded-xl border ${r.type==='收入'?'bg-green-50 border-green-100':'bg-red-50 border-red-100'}">
-                    <div class="flex-1">
-                        <div class="flex items-center gap-2">
-                            <span class="text-xs font-bold px-2 py-0.5 rounded ${r.type==='收入'?'bg-green-200 text-green-700':'bg-red-200 text-red-700'}">${r.category}</span>
-                            <span class="font-black text-slate-700">NT$ ${Number(r.amount).toLocaleString()}</span>
-                        </div>
-                        <p class="text-xs text-slate-400 mt-1">${r.note || '(無備註)'}</p>
-                    </div>
-                    <button onclick="deleteRecord(${r.id})" class="p-2 text-slate-300 hover:text-red-500 transition"><i class="fas fa-trash-alt"></i></button>
-                </div>
-            `).join('');
-        }
-
-        function deleteRecord(id) {
-            if(!confirm('確定要刪除這筆紀錄嗎？注意：此操作僅刪除手機暫存，建議手動檢查 Google 試算表。')) return;
-            db = db.filter(r => r.id !== id);
-            localStorage.setItem('snack_db_v12', JSON.stringify(db));
-            updateUI();
-        }
-
-        function renderCalendar() {
-            const grid = document.getElementById('calendarGrid'), year = viewDate.getFullYear(), month = viewDate.getMonth();
-            grid.innerHTML = ''; document.getElementById('monthDisplay').innerText = `${year}年 ${month + 1}月`;
-            const firstDay = new Date(year, month, 1).getDay(), daysInMonth = new Date(year, month + 1, 0).getDate();
-            const weekdays = ['日','一','二','三','四','五','六'];
-            weekdays.forEach(w => grid.innerHTML += `<div class="text-center text-[10px] font-bold text-slate-300 pb-2">${w}</div>`);
-            for(let i=0; i<firstDay; i++) grid.innerHTML += `<div></div>`;
-            for(let d=1; d<=daysInMonth; d++) {
-                const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-                const hasData = db.some(r => String(r.date).startsWith(dateStr));
-                grid.innerHTML += `<div onclick="selectDate('${dateStr}')" class="day-box ${hasData?'has-data':''} ${selectedDate===dateStr?'day-active':''}">${d}</div>`;
-            }
         }
 
         function selectDate(d) { selectedDate = d; updateUI(); }
         function prevMonth() { viewDate.setMonth(viewDate.getMonth() - 1); updateUI(); }
         function nextMonth() { viewDate.setMonth(viewDate.getMonth() + 1); updateUI(); }
 
-        function renderReports() {
-            const y = document.getElementById('reportYearSelect').value, m = document.getElementById('reportMonthSelect').value;
-            document.getElementById('trendTitleYear').innerText = y; 
-            document.getElementById('costTitleMonth').innerText = m;
-            document.getElementById('statsMonthLabel').innerText = m;
-
-            let yIn = 0, yOut = 0, mInArr = [], mOutArr = [], mSurplusArr = [];
-            for(let i=1; i<=12; i++) {
-                const prefix = `${y}-${String(i).padStart(2,'0')}`;
-                let mi=0, mo=0;
-                db.filter(r=>String(r.date).startsWith(prefix)).forEach(r=>{ if(r.type==='收入') mi+=Number(r.amount); else mo+=Number(r.amount); });
-                yIn+=mi; yOut+=mo; 
-                mInArr.push(mi); mOutArr.push(mo); mSurplusArr.push(mi-mo);
-            }
-            
-            document.getElementById('yearStatsBanner').innerHTML = `
-                <div class="p-3 bg-green-50 border-l-4 border-green-500 rounded-r-xl"><p class="text-xs text-green-600 font-bold">年度總收入</p><p class="text-xl font-black text-green-800">NT$ ${yIn.toLocaleString()}</p></div>
-                <div class="p-3 bg-red-50 border-l-4 border-red-500 rounded-r-xl"><p class="text-xs text-red-600 font-bold">年度總支出</p><p class="text-xl font-black text-red-800">NT$ ${yOut.toLocaleString()}</p></div>
-                <div class="p-3 bg-blue-50 border-l-4 border-blue-500 rounded-r-xl"><p class="text-xs text-blue-600 font-bold">年度純利</p><p class="text-xl font-black text-blue-800">NT$ ${(yIn-yOut).toLocaleString()}</p></div>`;
-
-            const ctx1 = document.getElementById('chartYearTrend').getContext('2d');
-            if(chartTrend) chartTrend.destroy();
-            chartTrend = new Chart(ctx1, { 
-                type: 'bar', 
-                data: { 
-                    labels: Array.from({length:12},(_,i)=>`${i+1}月`), 
-                    datasets:[
-                        { label: '收入', data: mInArr, backgroundColor: '#22c55e', borderRadius: 4 },
-                        { label: '支出', data: mOutArr, backgroundColor: '#ef4444', borderRadius: 4 },
-                        { label: '純利', data: mSurplusArr, backgroundColor: '#3b82f6', borderRadius: 4 }
-                    ] 
-                }, 
-                options:{
-                    responsive:true,
-                    maintainAspectRatio:false,
-                    plugins:{ legend:{ position:'top', labels:{ boxWidth:12, font:{size:12, weight:'bold'} } } }
-                } 
-            });
-
-            const mPrefix = `${y}-${String(m).padStart(2,'0')}`;
-            const mData = db.filter(r=>String(r.date).startsWith(mPrefix));
-            let mi=0, mo=0, mCost = {'人事':0,'材料':0,'固定成本':0,'其他':0};
-            mData.forEach(r=>{ if(r.type==='收入') mi+=Number(r.amount); else { mo+=Number(r.amount); mCost[reportMap[r.category]||'其他']+=Number(r.amount); }});
-            
-            const ctx2 = document.getElementById('chartCost').getContext('2d');
-            if(chartCost) chartCost.destroy();
-            chartCost = new Chart(ctx2, { 
-                type:'doughnut', 
-                data:{ labels:Object.keys(mCost), datasets:[{data:Object.values(mCost),backgroundColor:['#f59e0b','#ef4444','#8b5cf6','#94a3b8']}]}, 
-                options:{responsive:true,maintainAspectRatio:false, plugins:{legend:{position:'bottom'}}}
-            });
-            
-            document.getElementById('statsSummary').innerHTML = `
-                <div class="flex justify-between p-3 bg-green-50 rounded-xl border border-green-100"><span>當月營收</span><span class="font-bold text-green-600">NT$ ${mi.toLocaleString()}</span></div>
-                <div class="flex justify-between p-3 bg-red-50 rounded-xl border border-red-100"><span>當月支出</span><span class="font-bold text-red-600">NT$ ${mo.toLocaleString()}</span></div>
-                <div class="flex justify-between p-5 bg-blue-600 rounded-xl text-white shadow-lg mt-2"><span>當月純利</span><span class="text-2xl font-black">NT$ ${(mi-mo).toLocaleString()}</span></div>`;
-        }
-
-        // 初始化
+        // 啟動程式
         updateUI();
         loadCloudData();
     </script>
