@@ -132,11 +132,17 @@
                 const cloudData = await response.json();
                 if (Array.isArray(cloudData) && cloudData.length > 0) {
                     // 格式化雲端資料，確保 amount 是數字
-                    db = cloudData.map((r, index) => ({
-                        ...r,
-                        amount: Number(r.amount),
-                        id: r.id || Date.now() + index
-                    }));
+                    // 格式化雲端資料，解決日期時區位移問題
+                    db = cloudData.map((r, index) => {
+                        // 強制只取日期部分 (YYYY-MM-DD)，無視後面的時間
+                        let cleanDate = String(r.date).substring(0, 10);
+                        return {
+                            ...r,
+                            date: cleanDate,
+                            amount: Number(r.amount),
+                            id: r.id || Date.now() + index
+                        };
+                    });
                     localStorage.setItem('snack_db_v12', JSON.stringify(db));
                     updateUI();
                 }
