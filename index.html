@@ -6,6 +6,7 @@
     <title>樹新店記帳</title>
     <link rel="apple-touch-icon" href="logo.png">
     <link rel="icon" href="logo.png">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -27,7 +28,7 @@
 
     <div id="loading" class="loading-overlay">
         <i class="fas fa-sync fa-spin text-4xl mb-3"></i>
-        <span class="font-bold text-xl">雲端同步中...</span>
+        <span id="loading-text" class="font-bold text-xl">雲端同步中...</span>
     </div>
 
     <div class="max-w-6xl mx-auto">
@@ -48,7 +49,7 @@
                 </div>
                 <div class="bg-white p-5 rounded-3xl shadow-lg border">
                     <h4 class="font-black text-slate-700 mb-3 flex items-center"><i class="fas fa-list-ul mr-2 text-orange-500"></i> 當日明細</h4>
-                    <div id="dayDetailList" class="space-y-2 max-h-60 overflow-y-auto"><p class="text-slate-400 text-sm text-center py-4">選取日期查看明細</p></div>
+                    <div id="dayDetailList" class="space-y-2 max-h-60 overflow-y-auto"><p class="text-slate-400 text-sm text-center py-4">載入中...</p></div>
                 </div>
             </div>
             <div class="flex-1 space-y-4">
@@ -83,7 +84,7 @@
                     <div style="height: 300px;"><canvas id="chartYearTrend"></canvas></div>
                 </div>
                 <div class="bg-white p-6 rounded-3xl shadow border flex flex-col justify-center space-y-4">
-                    <h3 class="text-md font-black text-slate-500 text-center uppercase tracking-widest">年度數據統計</h3>
+                    <h3 class="text-md font-black text-slate-500 text-center uppercase tracking-widest">年度數據總結</h3>
                     <div id="yearStatsBanner" class="space-y-3"></div>
                 </div>
             </div>
@@ -102,6 +103,7 @@
     </div>
 
     <script>
+        // 1. 基本設定
         const CLOUD_URL = "https://script.google.com/macros/s/AKfycbwXSauQ1RB-4CQUBHskHuHYmdTERDczNjG-qEhV-jK8ME7lb20ZVum_QW_aNwbEKOKb/exec";
         let mode = 'income', selectedDate = new Date().toISOString().split('T')[0], viewDate = new Date();
         let db = JSON.parse(localStorage.getItem('snack_db_v12')) || [];
@@ -121,6 +123,30 @@
             '租金': '固定成本', '水費': '固定成本', '電費': '固定成本', '瓦斯類': '固定成本', '電話費': '固定成本', '清潔維護費': '固定成本'
         };
 
+        // 2. 核心功能：雲端讀取 (解決手機讀不到舊資料問題)
+        async function loadCloudData() {
+            document.getElementById('loading').style.display = 'flex';
+            document.getElementById('loading-text').innerText = "正在從雲端同步...";
+            try {
+                const response = await fetch(CLOUD_URL);
+                const cloudData = await response.json();
+                if (Array.isArray(cloudData) && cloudData.length > 0) {
+                    // 格式化雲端資料，確保 amount 是數字
+                    db = cloudData.map((r, index) => ({
+                        ...r,
+                        amount: Number(r.amount),
+                        id: r.id || Date.now() + index
+                    }));
+                    localStorage.setItem('snack_db_v12', JSON.stringify(db));
+                    updateUI();
+                }
+            } catch (e) {
+                console.error("雲端載入失敗，使用本地資料");
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
         function switchMainTab(target) {
             document.getElementById('section-record').classList.toggle('hidden', target !== 'record');
             document.getElementById('section-report').classList.toggle('hidden', target !== 'report');
@@ -132,7 +158,7 @@
         function initYearMonthOptions() {
             const ySelect = document.getElementById('reportYearSelect');
             if (ySelect.options.length > 0) return;
-            const years = [...new Set(db.map(r => r.date.split('-')[0]))];
+            const years = [...new Set(db.map(r => String(r.date).split('-')[0]))];
             const curY = new Date().getFullYear().toString();
             if (!years.includes(curY)) years.push(curY);
             years.sort((a,b)=>b-a);
@@ -171,14 +197,14 @@
 
         function renderDayDetails() {
             const list = document.getElementById('dayDetailList');
-            const dayData = db.filter(r => r.date === selectedDate);
+            const dayData = db.filter(r => String(r.date).startsWith(selectedDate));
             if(dayData.length === 0) { list.innerHTML = `<p class="text-slate-400 text-sm text-center py-4">本日無紀錄</p>`; return; }
             list.innerHTML = dayData.map(r => `
                 <div class="flex justify-between items-center p-3 rounded-xl border ${r.type==='收入'?'bg-green-50 border-green-100':'bg-red-50 border-red-100'}">
                     <div class="flex-1">
                         <div class="flex items-center gap-2">
                             <span class="text-xs font-bold px-2 py-0.5 rounded ${r.type==='收入'?'bg-green-200 text-green-700':'bg-red-200 text-red-700'}">${r.category}</span>
-                            <span class="font-black text-slate-700">NT$ ${r.amount.toLocaleString()}</span>
+                            <span class="font-black text-slate-700">NT$ ${Number(r.amount).toLocaleString()}</span>
                         </div>
                         <p class="text-xs text-slate-400 mt-1">${r.note || '(無備註)'}</p>
                     </div>
@@ -188,7 +214,7 @@
         }
 
         function deleteRecord(id) {
-            if(!confirm('確定要刪除這筆紀錄嗎？')) return;
+            if(!confirm('確定要刪除這筆紀錄嗎？注意：此操作僅刪除手機端，建議手動檢查 Google 試算表。')) return;
             db = db.filter(r => r.id !== id);
             localStorage.setItem('snack_db_v12', JSON.stringify(db));
             updateUI();
@@ -198,8 +224,15 @@
             const amountInput = document.getElementById('inputAmount');
             const amount = Number(amountInput.value);
             if(amount <= 0) return alert('請輸入金額');
-            const payload = { date: selectedDate, type: mode==='income'?'收入':'支出', category: document.getElementById('inputCategory').value, amount, note: document.getElementById('inputNote').value };
+            const payload = { 
+                date: selectedDate, 
+                type: mode==='income'?'收入':'支出', 
+                category: document.getElementById('inputCategory').value, 
+                amount: amount, 
+                note: document.getElementById('inputNote').value 
+            };
             document.getElementById('loading').style.display = 'flex';
+            document.getElementById('loading-text').innerText = "正在同步雲端...";
             try {
                 const id = Date.now();
                 db.push({ ...payload, id });
@@ -208,8 +241,8 @@
                 amountInput.value = '';
                 document.getElementById('inputNote').value = '';
                 updateUI();
-                amountInput.focus(); // 優化：自動聚焦，方便下一筆輸入
-            } catch (e) { alert('已存入本地，雲端同步失敗。'); }
+                amountInput.focus();
+            } catch (e) { alert('已存入本地，目前無法連線至雲端。'); }
             finally { document.getElementById('loading').style.display = 'none'; }
         }
 
@@ -222,7 +255,7 @@
             for(let i=0; i<firstDay; i++) grid.innerHTML += `<div></div>`;
             for(let d=1; d<=daysInMonth; d++) {
                 const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-                const hasData = db.some(r => r.date === dateStr);
+                const hasData = db.some(r => String(r.date).startsWith(dateStr));
                 grid.innerHTML += `<div onclick="selectDate('${dateStr}')" class="day-box ${hasData?'has-data':''} ${selectedDate===dateStr?'day-active':''}">${d}</div>`;
             }
         }
@@ -237,17 +270,15 @@
             document.getElementById('costTitleMonth').innerText = m;
             document.getElementById('statsMonthLabel').innerText = m;
 
-            // 1. 年度數據處理 (趨勢圖優化：三柱狀)
             let yIn = 0, yOut = 0, mInArr = [], mOutArr = [], mSurplusArr = [];
             for(let i=1; i<=12; i++) {
                 const prefix = `${y}-${String(i).padStart(2,'0')}`;
                 let mi=0, mo=0;
-                db.filter(r=>r.date.startsWith(prefix)).forEach(r=>{ if(r.type==='收入') mi+=r.amount; else mo+=r.amount; });
+                db.filter(r=>String(r.date).startsWith(prefix)).forEach(r=>{ if(r.type==='收入') mi+=Number(r.amount); else mo+=Number(r.amount); });
                 yIn+=mi; yOut+=mo; 
                 mInArr.push(mi); mOutArr.push(mo); mSurplusArr.push(mi-mo);
             }
             
-            // 年度數據總結 (中文化與顏色修正)
             document.getElementById('yearStatsBanner').innerHTML = `
                 <div class="p-3 bg-green-50 border-l-4 border-green-500 rounded-r-xl"><p class="text-xs text-green-600 font-bold">年度總收入</p><p class="text-xl font-black text-green-800">NT$ ${yIn.toLocaleString()}</p></div>
                 <div class="p-3 bg-red-50 border-l-4 border-red-500 rounded-r-xl"><p class="text-xs text-red-600 font-bold">年度總支出</p><p class="text-xl font-black text-red-800">NT$ ${yOut.toLocaleString()}</p></div>
@@ -268,16 +299,14 @@
                 options:{
                     responsive:true,
                     maintainAspectRatio:false,
-                    plugins:{ legend:{ position:'top', labels:{ boxWidth:12, font:{size:12, weight:'bold'} } } },
-                    scales: { y: { beginAtZero: true } }
+                    plugins:{ legend:{ position:'top', labels:{ boxWidth:12, font:{size:12, weight:'bold'} } } }
                 } 
             });
 
-            // 2. 月度數據處理 (成本餅圖)
             const mPrefix = `${y}-${String(m).padStart(2,'0')}`;
-            const mData = db.filter(r=>r.date.startsWith(mPrefix));
+            const mData = db.filter(r=>String(r.date).startsWith(mPrefix));
             let mi=0, mo=0, mCost = {'人事':0,'材料':0,'固定成本':0,'其他':0};
-            mData.forEach(r=>{ if(r.type==='收入') mi+=r.amount; else { mo+=r.amount; mCost[reportMap[r.category]||'其他']+=r.amount; }});
+            mData.forEach(r=>{ if(r.type==='收入') mi+=Number(r.amount); else { mo+=Number(r.amount); mCost[reportMap[r.category]||'其他']+=Number(r.amount); }});
             
             const ctx2 = document.getElementById('chartCost').getContext('2d');
             if(chartCost) chartCost.destroy();
@@ -287,14 +316,15 @@
                 options:{responsive:true,maintainAspectRatio:false, plugins:{legend:{position:'bottom'}}}
             });
             
-            // 月統計同步顯示 (配色優化)
             document.getElementById('statsSummary').innerHTML = `
                 <div class="flex justify-between p-3 bg-green-50 rounded-xl border border-green-100"><span>當月營收</span><span class="font-bold text-green-600">NT$ ${mi.toLocaleString()}</span></div>
                 <div class="flex justify-between p-3 bg-red-50 rounded-xl border border-red-100"><span>當月支出</span><span class="font-bold text-red-600">NT$ ${mo.toLocaleString()}</span></div>
-                <div class="flex justify-between p-5 bg-blue-600 rounded-xl text-white shadow-lg mt-2"><span>當月純利 (結餘)</span><span class="text-2xl font-black">NT$ ${(mi-mo).toLocaleString()}</span></div>`;
+                <div class="flex justify-between p-5 bg-blue-600 rounded-xl text-white shadow-lg mt-2"><span>當月純利</span><span class="text-2xl font-black">NT$ ${(mi-mo).toLocaleString()}</span></div>`;
         }
 
+        // 初始化
         updateUI();
+        loadCloudData(); // 網頁開啟即自動嘗試同步雲端舊資料
     </script>
 </body>
 </html>
