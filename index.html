@@ -105,7 +105,11 @@
     <script>
         // 1. 基本設定
         const CLOUD_URL = "https://script.google.com/macros/s/AKfycbwXSauQ1RB-4CQUBHskHuHYmdTERDczNjG-qEhV-jK8ME7lb20ZVum_QW_aNwbEKOKb/exec";
-        let mode = 'income', selectedDate = new Date().toISOString().split('T')[0], viewDate = new Date();
+        
+        // 修正日期初始化，確保是台灣當地日期
+        let selectedDate = new Date().toLocaleDateString('sv'); 
+        let viewDate = new Date();
+        let mode = 'income';
         let db = JSON.parse(localStorage.getItem('snack_db_v12')) || [];
         let chartTrend = null, chartCost = null;
 
@@ -123,18 +127,16 @@
             '租金': '固定成本', '水費': '固定成本', '電費': '固定成本', '瓦斯類': '固定成本', '電話費': '固定成本', '清潔維護費': '固定成本'
         };
 
-        // 2. 核心功能：雲端讀取 (解決手機讀不到舊資料問題)
+        // 2. 核心功能：雲端讀取
         async function loadCloudData() {
             document.getElementById('loading').style.display = 'flex';
             document.getElementById('loading-text').innerText = "正在從雲端同步...";
             try {
                 const response = await fetch(CLOUD_URL);
                 const cloudData = await response.json();
-                if (Array.isArray(cloudData) && cloudData.length > 0) {
-                    // 格式化雲端資料，確保 amount 是數字
-                    // 格式化雲端資料，解決日期時區位移問題
+                if (Array.isArray(cloudData)) {
+                    // 強制截斷日期字串，防止時區偏移
                     db = cloudData.map((r, index) => {
-                        // 強制只取日期部分 (YYYY-MM-DD)，無視後面的時間
                         let cleanDate = String(r.date).substring(0, 10);
                         return {
                             ...r,
@@ -150,6 +152,48 @@
                 console.error("雲端載入失敗，使用本地資料");
             } finally {
                 document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        async function saveRecord() {
+            const amountInput = document.getElementById('inputAmount');
+            const amount = Number(amountInput.value);
+            if(amount <= 0) return alert('請輸入金額');
+
+            const payload = { 
+                date: selectedDate, 
+                type: mode==='income'?'收入':'支出', 
+                category: document.getElementById('inputCategory').value, 
+                amount: amount, 
+                note: document.getElementById('inputNote').value 
+            };
+
+            document.getElementById('loading').style.display = 'flex';
+            document.getElementById('loading-text').innerText = "正在同步雲端...";
+
+            try {
+                // 本地預先存儲
+                const id = Date.now();
+                db.push({ ...payload, id });
+                localStorage.setItem('snack_db_v12', JSON.stringify(db));
+
+                // 發送到 Google (使用 no-cors 提高跨載具成功率)
+                await fetch(CLOUD_URL, { 
+                    method: 'POST', 
+                    mode: 'no-cors',
+                    body: JSON.stringify(payload) 
+                });
+
+                // 清空欄位
+                amountInput.value = '';
+                document.getElementById('inputNote').value = '';
+                updateUI();
+                amountInput.focus();
+            } catch (e) { 
+                console.error(e);
+                alert('連線稍微遲緩，資料已保存在手機，稍後會自動同步。'); 
+            } finally { 
+                document.getElementById('loading').style.display = 'none'; 
             }
         }
 
@@ -220,36 +264,10 @@
         }
 
         function deleteRecord(id) {
-            if(!confirm('確定要刪除這筆紀錄嗎？注意：此操作僅刪除手機端，建議手動檢查 Google 試算表。')) return;
+            if(!confirm('確定要刪除這筆紀錄嗎？注意：此操作僅刪除手機暫存，建議手動檢查 Google 試算表。')) return;
             db = db.filter(r => r.id !== id);
             localStorage.setItem('snack_db_v12', JSON.stringify(db));
             updateUI();
-        }
-
-        async function saveRecord() {
-            const amountInput = document.getElementById('inputAmount');
-            const amount = Number(amountInput.value);
-            if(amount <= 0) return alert('請輸入金額');
-            const payload = { 
-                date: selectedDate, 
-                type: mode==='income'?'收入':'支出', 
-                category: document.getElementById('inputCategory').value, 
-                amount: amount, 
-                note: document.getElementById('inputNote').value 
-            };
-            document.getElementById('loading').style.display = 'flex';
-            document.getElementById('loading-text').innerText = "正在同步雲端...";
-            try {
-                const id = Date.now();
-                db.push({ ...payload, id });
-                localStorage.setItem('snack_db_v12', JSON.stringify(db));
-                await fetch(CLOUD_URL, { method: 'POST', body: JSON.stringify(payload) });
-                amountInput.value = '';
-                document.getElementById('inputNote').value = '';
-                updateUI();
-                amountInput.focus();
-            } catch (e) { alert('已存入本地，目前無法連線至雲端。'); }
-            finally { document.getElementById('loading').style.display = 'none'; }
         }
 
         function renderCalendar() {
@@ -330,7 +348,7 @@
 
         // 初始化
         updateUI();
-        loadCloudData(); // 網頁開啟即自動嘗試同步雲端舊資料
+        loadCloudData();
     </script>
 </body>
 </html>
