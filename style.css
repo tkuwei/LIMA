@@ -17,27 +17,28 @@ body { font-family: 'PingFang TC', sans-serif; background-color: #f8fafc; }
 /* 編輯模式高亮 */
 .editing-mode { box-shadow: 0 0 20px rgba(249, 115, 22, 0.4); border: 2px solid #f97316 !important; }
 
-/* --- 移除數字輸入框的上下箭頭 (Spinner) --- */
+/* 修正手機版圖表看不到的問題 */
+.chart-box {
+    position: relative;
+    height: 200px; /* 強制高度，手機版才不會塌陷 */
+    width: 100%;
+}
+
+/* 移除數字輸入框的上下箭頭 */
 input[type=number]::-webkit-inner-spin-button, 
 input[type=number]::-webkit-outer-spin-button { 
   -webkit-appearance: none; 
   margin: 0; 
 }
-input[type=number] {
-  -moz-appearance: textfield; /* Firefox */
-}
+input[type=number] { -moz-appearance: textfield; }
 
-/* --- 顏色模式樣式 --- */
-
-/* 收入模式 (綠色系) */
-.mode-income-active { background-color: #16a34a !important; color: white !important; } /* green-600 */
-.mode-income-bg { background-color: #f0fdf4 !important; border-color: #bbf7d0 !important; } /* green-50 */
+/* 顏色模式樣式 */
+.mode-income-active { background-color: #16a34a !important; color: white !important; }
+.mode-income-bg { background-color: #f0fdf4 !important; border-color: #bbf7d0 !important; }
 .text-income { color: #16a34a !important; }
 
-/* 支出模式 (紅色系) */
-.mode-expense-active { background-color: #dc2626 !important; color: white !important; } /* red-600 */
-.mode-expense-bg { background-color: #fef2f2 !important; border-color: #fecaca !important; } /* red-50 */
+.mode-expense-active { background-color: #dc2626 !important; color: white !important; }
+.mode-expense-bg { background-color: #fef2f2 !important; border-color: #fecaca !important; }
 .text-expense { color: #dc2626 !important; }
 
-/* 非啟用按鈕通用樣式 */
 .mode-inactive { background-color: rgba(255,255,255,0.5); color: #94a3b8; border: 1px solid #e2e8f0; }
