@@ -1,21 +1,97 @@
 ﻿/* 全局字體與背景 */
-body { font-family: 'PingFang TC', sans-serif; background-color: #f8fafc; }
+body { 
+    font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif; 
+    background-color: #f8fafc; 
+    padding-top: env(safe-area-inset-top); 
+}
 
 /* 日曆樣式 */
 .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
-.day-box { aspect-ratio: 1/1.1; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; border-radius: 12px; transition: 0.2s; background: #fff; border: 1px solid #f1f5f9; font-size: 0.9rem; }
-.has-data { background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); color: #15803d; font-weight: bold; }
-.day-active { border: 3px solid #f97316 !important; background-color: #fff7ed !important; transform: scale(1.05); }
+.day-box { 
+    aspect-ratio: 1/1.1; 
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    justify-content: center; 
+    cursor: pointer; 
+    border-radius: 12px; 
+    transition: 0.2s; 
+    background: #fff; 
+    border: 1px solid #f1f5f9; 
+    font-size: 0.9rem; 
+}
+.has-data { 
+    background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); 
+    color: #15803d; 
+    font-weight: bold; 
+}
+.day-active { 
+    border: 3px solid #f97316 !important; 
+    background-color: #fff7ed !important; 
+    transform: scale(1.05); 
+}
 
 /* Tab 按鈕 */
 .tab-btn { color: #94a3b8; border-bottom: 4px solid transparent; transition: 0.3s; }
 .tab-active { border-bottom: 4px solid #f97316; color: #f97316; font-weight: 800; }
 
+/* Toast 容器基礎樣式 */
+#toast {
+    visibility: hidden;           /* 預設隱藏 */
+    min-width: 200px;             /* 最小寬度 */
+    background-color: rgba(51, 51, 51, 0.9); /* 深灰色半透明 */
+    color: #fff;                  /* 文字白色 */
+    text-align: center;           /* 文字置中 */
+    border-radius: 50px;          /* 圓角 */
+    padding: 12px 24px;           /* 內距 */
+    position: fixed;              /* 固定定位 */
+    z-index: 9999;                /* 確保在最上層 */
+    left: 50%;                    /* 居中設定 */
+    bottom: 50px;                 /* 距離底部 50px */
+    transform: translateX(-50%);  /* 完美的水平置中 */
+    font-size: 14px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2); 
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+/* 當 JS 加入 .show 類別時，觸發動畫 */
+#toast.show {
+    visibility: visible;
+    opacity: 1;
+    animation: fadein 0.5s, fadeout 0.5s 2.5s; 
+}
+
+/* 淡入動畫 */
+@keyframes fadein { 
+    from { bottom: 30px; opacity: 0; } 
+    to { bottom: 50px; opacity: 1; } 
+}
+
+/* 淡出動畫 */
+@keyframes fadeout { 
+    from { bottom: 50px; opacity: 1; } 
+    to { bottom: 30px; opacity: 0; } 
+}
+
 /* Loading 遮罩 */
-.loading-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; justify-content: center; align-items: center; color: white; flex-direction: column; }
+.loading-overlay { 
+    display: none; 
+    position: fixed; 
+    inset: 0; 
+    background: rgba(0,0,0,0.6); 
+    z-index: 100; 
+    justify-content: center; 
+    align-items: center; 
+    color: white; 
+    flex-direction: column; 
+}
 
 /* 編輯模式高亮 */
-.editing-mode { box-shadow: 0 0 20px rgba(249, 115, 22, 0.4); border: 2px solid #f97316 !important; }
+.editing-mode { 
+    box-shadow: 0 0 20px rgba(249, 115, 22, 0.4); 
+    border: 2px solid #f97316 !important; 
+}
 
 /* 修正手機版圖表看不到的問題 */
 .chart-box {
@@ -24,11 +100,18 @@ body { font-family: 'PingFang TC', sans-serif; background-color: #f8fafc; }
     width: 100%;
 }
 
+/* 趨勢圖專用容器：確保日線整年顯示且不捲動 */
+#chartTrendContainer {
+    width: 100% !important; 
+    height: 320px !important; /* 拉高趨勢圖讓 365 天更清晰 */
+    position: relative;
+}
+
 /* 移除數字輸入框的上下箭頭 */
 input[type=number]::-webkit-inner-spin-button, 
 input[type=number]::-webkit-outer-spin-button { 
-  -webkit-appearance: none; 
-  margin: 0; 
+    -webkit-appearance: none; 
+    margin: 0; 
 }
 input[type=number] { -moz-appearance: textfield; }
 
@@ -42,3 +125,6 @@ input[type=number] { -moz-appearance: textfield; }
 .text-expense { color: #dc2626 !important; }
 
 .mode-inactive { background-color: rgba(255,255,255,0.5); color: #94a3b8; border: 1px solid #e2e8f0; }
+
+/* 營利輔助樣式 */
+.text-profit { color: #3b82f6 !important; }
