@@ -1,0 +1,43 @@
+﻿/* 全局字體與背景 */
+body { font-family: 'PingFang TC', sans-serif; background-color: #f8fafc; }
+
+/* 日曆樣式 */
+.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.day-box { aspect-ratio: 1/1.1; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; border-radius: 12px; transition: 0.2s; background: #fff; border: 1px solid #f1f5f9; font-size: 0.9rem; }
+.has-data { background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); color: #15803d; font-weight: bold; }
+.day-active { border: 3px solid #f97316 !important; background-color: #fff7ed !important; transform: scale(1.05); }
+
+/* Tab 按鈕 */
+.tab-btn { color: #94a3b8; border-bottom: 4px solid transparent; transition: 0.3s; }
+.tab-active { border-bottom: 4px solid #f97316; color: #f97316; font-weight: 800; }
+
+/* Loading 遮罩 */
+.loading-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; justify-content: center; align-items: center; color: white; flex-direction: column; }
+
+/* 編輯模式高亮 */
+.editing-mode { box-shadow: 0 0 20px rgba(249, 115, 22, 0.4); border: 2px solid #f97316 !important; }
+
+/* --- 移除數字輸入框的上下箭頭 (Spinner) --- */
+input[type=number]::-webkit-inner-spin-button, 
+input[type=number]::-webkit-outer-spin-button { 
+  -webkit-appearance: none; 
+  margin: 0; 
+}
+input[type=number] {
+  -moz-appearance: textfield; /* Firefox */
+}
+
+/* --- 顏色模式樣式 --- */
+
+/* 收入模式 (綠色系) */
+.mode-income-active { background-color: #16a34a !important; color: white !important; } /* green-600 */
+.mode-income-bg { background-color: #f0fdf4 !important; border-color: #bbf7d0 !important; } /* green-50 */
+.text-income { color: #16a34a !important; }
+
+/* 支出模式 (紅色系) */
+.mode-expense-active { background-color: #dc2626 !important; color: white !important; } /* red-600 */
+.mode-expense-bg { background-color: #fef2f2 !important; border-color: #fecaca !important; } /* red-50 */
+.text-expense { color: #dc2626 !important; }
+
+/* 非啟用按鈕通用樣式 */
+.mode-inactive { background-color: rgba(255,255,255,0.5); color: #94a3b8; border: 1px solid #e2e8f0; }

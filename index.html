@@ -10,21 +10,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-
-    <style>
-        body { font-family: 'PingFang TC', sans-serif; background-color: #f8fafc; }
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
-        .day-box { aspect-ratio: 1/1.1; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; border-radius: 12px; transition: 0.2s; background: #fff; border: 1px solid #f1f5f9; font-size: 0.9rem; }
-        .has-data { background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); color: #15803d; font-weight: bold; }
-        .day-active { border: 3px solid #f97316 !important; background-color: #fff7ed !important; transform: scale(1.05); }
-        .mode-active { background: linear-gradient(to right, #f97316, #ea580c) !important; color: white !important; }
-        .tab-btn { color: #94a3b8; border-bottom: 4px solid transparent; transition: 0.3s; }
-        .tab-active { border-bottom: 4px solid #f97316; color: #f97316; font-weight: 800; }
-        .bg-income-mode { background-color: #f0fdf4 !important; border-color: #bbf7d0 !important; }
-        .bg-expense-mode { background-color: #fef2f2 !important; border-color: #fecaca !important; }
-        .loading-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; justify-content: center; align-items: center; color: white; flex-direction: column; }
-        .editing-mode { box-shadow: 0 0 20px rgba(249, 115, 22, 0.4); border: 2px solid #f97316 !important; }
-    </style>
+    
+    <link rel="stylesheet" href="style.css">
 </head>
 <body class="p-2 md:p-6">
 
@@ -60,13 +47,13 @@
             </div>
 
             <div class="flex-1 space-y-4">
-                <div id="inputCard" class="bg-white p-6 rounded-3xl shadow-lg border transition-all duration-300 bg-income-mode">
+                <div id="inputCard" class="bg-white p-6 rounded-3xl shadow-lg border transition-all duration-300">
                     <div class="flex justify-between items-end mb-6">
                         <div>
                             <p class="text-slate-500 text-xs font-bold uppercase tracking-widest">Selected Date</p>
                             <h3 id="displaySelectedDate" class="text-3xl font-black text-slate-800">日期</h3>
                         </div>
-                        <span id="currentStatusTag" class="bg-green-600 text-white px-4 py-1 rounded-full text-xs font-bold shadow-sm">收入模式</span>
+                        <span id="currentStatusTag" class="px-4 py-1 rounded-full text-xs font-bold shadow-sm transition-colors">收入模式</span>
                     </div>
                     
                     <div id="editNotice" class="hidden mb-4 p-2 bg-orange-100 text-orange-700 text-sm font-bold rounded-lg text-center animate-pulse">
@@ -74,17 +61,19 @@
                     </div>
 
                     <div class="grid grid-cols-2 gap-3 mb-6">
-                        <button onclick="changeMode('income')" id="btn-income" class="py-4 rounded-xl font-bold mode-active shadow-md">記收入</button>
-                        <button onclick="changeMode('expense')" id="btn-expense" class="py-4 rounded-xl font-bold bg-white/50 text-slate-400 border border-slate-200">記支出</button>
+                        <button onclick="changeMode('income')" id="btn-income" class="py-4 rounded-xl font-bold shadow-md transition-all">記收入</button>
+                        <button onclick="changeMode('expense')" id="btn-expense" class="py-4 rounded-xl font-bold transition-all">記支出</button>
                     </div>
 
                     <div class="space-y-4">
                         <select id="inputCategory" class="w-full bg-white border rounded-xl p-4 text-lg font-bold outline-none shadow-sm"></select>
-                        <input type="number" id="inputAmount" inputmode="numeric" placeholder="請輸入金額" class="w-full bg-white border rounded-xl p-5 text-4xl font-black text-orange-600 outline-none shadow-inner">
+                        <input type="number" id="inputAmount" inputmode="numeric" placeholder="請輸入金額" class="w-full bg-white border rounded-xl p-5 text-4xl font-black outline-none shadow-inner transition-colors">
                         <input type="text" id="inputNote" placeholder="備註..." class="w-full bg-white border rounded-xl p-4 outline-none shadow-sm">
+                        
                         <div class="flex gap-2">
-                            <button onclick="saveRecord()" class="flex-1 bg-slate-900 text-white font-black py-5 rounded-xl text-xl shadow-xl hover:bg-black transition active:scale-95">確認存入雲端</button>
-                            <button id="cancelEditBtn" onclick="resetForm()" class="hidden px-6 bg-slate-200 text-slate-600 font-bold py-5 rounded-xl hover:bg-slate-300 transition">取消</button>
+                            <button onclick="saveRecord()" class="flex-1 bg-slate-900 text-white font-black py-5 rounded-xl text-xl shadow-xl hover:bg-black transition active:scale-95">確認存入</button>
+                            <button id="cancelEditBtn" onclick="resetForm()" class="hidden px-4 bg-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-300 transition">取消</button>
+                            <button id="deleteBtn" onclick="deleteRecord()" class="hidden px-4 bg-red-100 text-red-600 font-bold rounded-xl hover:bg-red-200 transition"><i class="fas fa-trash-alt"></i></button>
                         </div>
                     </div>
                 </div>
@@ -104,8 +93,8 @@
                     </div>
                 </div>
                 <div class="flex bg-slate-100 p-1 rounded-xl">
-                    <button onclick="changeReportView('month')" id="view-month" class="px-4 py-2 rounded-lg font-bold transition-all bg-white shadow-sm text-orange-600">月線 (12個月)</button>
-                    <button onclick="changeReportView('week')" id="view-week" class="px-4 py-2 rounded-lg font-bold transition-all text-slate-500">週線 (本月趨勢)</button>
+                    <button onclick="changeReportView('month')" id="view-month" class="px-4 py-2 rounded-lg font-bold transition-all bg-white shadow-sm text-orange-600">月線</button>
+                    <button onclick="changeReportView('week')" id="view-week" class="px-4 py-2 rounded-lg font-bold transition-all text-slate-500">週線</button>
                 </div>
             </div>
 
@@ -116,288 +105,23 @@
                     </h3>
                     <div style="height: 350px;"><canvas id="chartYearTrend"></canvas></div>
                 </div>
-                <div class="bg-white p-6 rounded-3xl shadow border flex flex-col justify-center space-y-4">
-                    <h3 class="text-md font-black text-slate-500 text-center uppercase tracking-widest">週期數據總結</h3>
-                    <div id="periodStatsBanner" class="space-y-4"></div>
+                
+                <div class="bg-white p-6 rounded-3xl shadow border flex flex-col space-y-6">
+                    <div>
+                        <h3 class="text-md font-black text-slate-500 text-center uppercase tracking-widest mb-4">週期數據總結</h3>
+                        <div id="periodStatsBanner" class="space-y-4"></div>
+                    </div>
+                    <div class="flex-1 border-t pt-4">
+                        <h3 class="text-md font-black text-slate-500 text-center uppercase tracking-widest mb-2">支出類別佔比</h3>
+                        <div style="height: 200px; position: relative;">
+                            <canvas id="chartExpensePie"></canvas>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <script>
-        // 1. 核心變數與設定
-        const CLOUD_URL = "https://script.google.com/macros/s/AKfycbwXSauQ1RB-4CQUBHskHuHYmdTERDczNjG-qEhV-jK8ME7lb20ZVum_QW_aNwbEKOKb/exec";
-        
-        let selectedDate = new Date().toLocaleDateString('sv'); 
-        let viewDate = new Date();
-        let mode = 'income';
-        let db = JSON.parse(localStorage.getItem('snack_db_v12')) || [];
-        let chartTrend = null;
-        let editingId = null;
-        let reportViewMode = 'month'; 
-
-        const categories = {
-            income: ['現金收入', 'FoodPanda', 'Uber Eats', '其他收入'],
-            expense: {
-                '日支出 (經常支出)': ['食材', '耗材', '薪資 (日)', '雜項'],
-                '月支出 (浮動支出)': ['米糧', '蔬菜', '火鍋料', '調味料', 'FoodPanda', 'Uber Eats', '稅務', '維修'],
-                '月支出 (固定支出)': ['租金', '水費', '電費', '瓦斯類', '電話費', '清潔維護費', '薪資 (月)']
-            }
-        };
-
-        const reportMap = {
-            '薪資 (日)': '人事', '薪資 (月)': '人事', 
-            '食材': '材料', '耗材': '材料', '米糧': '材料', '蔬菜': '材料', '火鍋料': '材料', '調味料': '材料',
-            '租金': '固定成本', '水費': '固定成本', '電費': '固定成本', '瓦斯類': '固定成本', '電話費': '固定成本', '清潔維護費': '固定成本'
-        };
-
-        // 2. 雲端同步與資料校正 (日期防跑偏邏輯)
-        async function loadCloudData() {
-            document.getElementById('loading').style.display = 'flex';
-            try {
-                const response = await fetch(CLOUD_URL);
-                const cloudData = await response.json();
-                if (Array.isArray(cloudData)) {
-                    db = cloudData.map((r, index) => {
-                        let rawDate = r.date ? String(r.date) : "";
-                        let cleanDate = rawDate.includes("T") ? rawDate.split("T")[0] : rawDate.substring(0, 10);
-                        return {
-                            ...r,
-                            date: cleanDate,
-                            amount: Number(r.amount),
-                            id: r.id || (Date.now() + index)
-                        };
-                    });
-                    localStorage.setItem('snack_db_v12', JSON.stringify(db));
-                    updateUI();
-                }
-            } catch (e) { console.error("同步失敗"); }
-            finally { document.getElementById('loading').style.display = 'none'; }
-        }
-
-        // 3. 記帳與編輯邏輯
-        function editRecord(id) {
-            const item = db.find(r => r.id == id);
-            if (!item) return;
-            editingId = id;
-            selectedDate = item.date;
-            changeMode(item.type === '收入' ? 'income' : 'expense');
-            document.getElementById('inputCategory').value = item.category;
-            document.getElementById('inputAmount').value = item.amount;
-            document.getElementById('inputNote').value = item.note;
-            document.getElementById('inputCard').classList.add('editing-mode');
-            document.getElementById('editNotice').classList.remove('hidden');
-            document.getElementById('cancelEditBtn').classList.remove('hidden');
-            updateUI();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        function resetForm() {
-            editingId = null;
-            document.getElementById('inputAmount').value = '';
-            document.getElementById('inputNote').value = '';
-            document.getElementById('inputCard').classList.remove('editing-mode');
-            document.getElementById('editNotice').classList.add('hidden');
-            document.getElementById('cancelEditBtn').classList.add('hidden');
-            updateUI();
-        }
-
-        async function saveRecord() {
-            const amountInput = document.getElementById('inputAmount');
-            const amount = Number(amountInput.value);
-            if(amount <= 0) return alert('請輸入金額');
-
-            const payload = { 
-                date: selectedDate, 
-                type: mode==='income'?'收入':'支出', 
-                category: document.getElementById('inputCategory').value, 
-                amount: amount, 
-                note: document.getElementById('inputNote').value,
-                id: editingId || Date.now()
-            };
-
-            document.getElementById('loading').style.display = 'flex';
-            try {
-                if (editingId) {
-                    const idx = db.findIndex(r => r.id == editingId);
-                    if(idx !== -1) db[idx] = payload;
-                } else { db.push(payload); }
-                
-                localStorage.setItem('snack_db_v12', JSON.stringify(db));
-                await fetch(CLOUD_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
-                resetForm();
-            } catch (e) { alert('儲存失敗'); }
-            finally { document.getElementById('loading').style.display = 'none'; }
-        }
-
-        // 4. UI 渲染邏輯
-        function updateUI() {
-            const select = document.getElementById('inputCategory');
-            if (mode === 'income') {
-                select.innerHTML = categories.income.map(c => `<option value="${c}">${c}</option>`).join('');
-            } else {
-                let html = '';
-                for (const [group, items] of Object.entries(categories.expense)) {
-                    html += `<optgroup label="${group}">${items.map(c => `<option value="${c}">${c}</option>`).join('')}</optgroup>`;
-                }
-                select.innerHTML = html;
-            }
-            document.getElementById('displaySelectedDate').innerText = selectedDate;
-            renderCalendar();
-            renderDayDetails();
-        }
-
-        function renderCalendar() {
-            const grid = document.getElementById('calendarGrid'), year = viewDate.getFullYear(), month = viewDate.getMonth();
-            grid.innerHTML = ''; 
-            document.getElementById('monthDisplay').innerText = `${year}年 ${month + 1}月`;
-            const firstDay = new Date(year, month, 1).getDay(), daysInMonth = new Date(year, month + 1, 0).getDate();
-            const weekdays = ['日','一','二','三','四','五','六'];
-            weekdays.forEach(w => grid.innerHTML += `<div class="text-center text-[10px] font-bold text-slate-300 pb-2">${w}</div>`);
-            for(let i=0; i<firstDay; i++) grid.innerHTML += `<div></div>`;
-            for(let d=1; d<=daysInMonth; d++) {
-                const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-                const hasData = db.some(r => String(r.date) === dateStr);
-                grid.innerHTML += `<div onclick="selectDate('${dateStr}')" class="day-box ${hasData?'has-data':''} ${selectedDate===dateStr?'day-active':''}">${d}</div>`;
-            }
-        }
-
-        function renderDayDetails() {
-            const list = document.getElementById('dayDetailList');
-            const dayData = db.filter(r => String(r.date).startsWith(selectedDate));
-            if(dayData.length === 0) { list.innerHTML = `<p class="text-slate-400 text-sm text-center py-4">無紀錄</p>`; return; }
-            list.innerHTML = dayData.map(r => `
-                <div onclick="editRecord(${r.id})" class="cursor-pointer group flex justify-between items-center p-3 rounded-xl border transition-all hover:bg-white hover:shadow-sm ${r.type==='收入'?'bg-green-50/50 border-green-100':'bg-red-50/50 border-red-100'}">
-                    <div class="flex-1">
-                        <div class="flex items-center gap-2">
-                            <span class="text-[10px] font-bold px-2 py-0.5 rounded ${r.type==='收入'?'bg-green-200 text-green-700':'bg-red-200 text-red-700'}">${r.category}</span>
-                            <span class="font-black text-slate-700">NT$ ${Number(r.amount).toLocaleString()}</span>
-                        </div>
-                        <p class="text-xs text-slate-400 mt-1">${r.note || ''}</p>
-                    </div>
-                    <i class="fas fa-edit text-slate-200 group-hover:text-orange-400 transition"></i>
-                </div>
-            `).join('');
-        }
-
-        // 5. 經營報表邏輯 (收支利數據看板 & 週月線切換)
-        function changeReportView(view) {
-            reportViewMode = view;
-            const isMonth = view === 'month';
-            document.getElementById('view-month').className = isMonth ? "px-4 py-2 rounded-lg font-bold transition-all bg-white shadow-sm text-orange-600" : "px-4 py-2 rounded-lg font-bold transition-all text-slate-500";
-            document.getElementById('view-week').className = !isMonth ? "px-4 py-2 rounded-lg font-bold transition-all bg-white shadow-sm text-orange-600" : "px-4 py-2 rounded-lg font-bold transition-all text-slate-500";
-            renderReports();
-        }
-
-        function renderReports() {
-            const y = document.getElementById('reportYearSelect').value;
-            const m = document.getElementById('reportMonthSelect').value;
-            const ctx = document.getElementById('chartYearTrend').getContext('2d');
-
-            let labels = [], inData = [], outData = [], profitData = [];
-            let totalIn = 0, totalOut = 0;
-
-            if (reportViewMode === 'month') {
-                document.getElementById('chartMainTitle').innerText = `${y} 年度趨勢 (月線)`;
-                for (let i = 1; i <= 12; i++) {
-                    const prefix = `${y}-${String(i).padStart(2, '0')}`;
-                    let mi = 0, mo = 0;
-                    db.filter(r => String(r.date).startsWith(prefix)).forEach(r => {
-                        if (r.type === '收入') mi += Number(r.amount); else mo += Number(r.amount);
-                    });
-                    labels.push(`${i}月`); inData.push(mi); outData.push(mo); profitData.push(mi - mo);
-                    totalIn += mi; totalOut += mo;
-                }
-            } else {
-                document.getElementById('chartMainTitle').innerText = `${y}年 ${m}月 趨勢 (週線)`;
-                const weeks = [
-                    { name: '1-7日', s: 1, e: 7 }, { name: '8-14日', s: 8, e: 14 }, 
-                    { name: '15-21日', s: 15, e: 21 }, { name: '22日+', s: 22, e: 31 }
-                ];
-                weeks.forEach(w => {
-                    let mi = 0, mo = 0;
-                    db.filter(r => {
-                        const d = new Date(r.date);
-                        return d.getFullYear() == y && (d.getMonth() + 1) == m && d.getDate() >= w.s && d.getDate() <= w.e;
-                    }).forEach(r => {
-                        if (r.type === '收入') mi += Number(r.amount); else mo += Number(r.amount);
-                    });
-                    labels.push(w.name); inData.push(mi); outData.push(mo); profitData.push(mi - mo);
-                    totalIn += mi; totalOut += mo;
-                });
-            }
-
-            // 更新數據看板
-            document.getElementById('periodStatsBanner').innerHTML = `
-                <div class="p-4 bg-green-50 border-l-4 border-green-500 rounded-r-xl shadow-sm">
-                    <p class="text-[10px] text-green-600 font-bold uppercase tracking-widest">總收入</p>
-                    <p class="text-2xl font-black text-green-800">NT$ ${totalIn.toLocaleString()}</p>
-                </div>
-                <div class="p-4 bg-red-50 border-l-4 border-red-500 rounded-r-xl shadow-sm">
-                    <p class="text-[10px] text-red-600 font-bold uppercase tracking-widest">總支出</p>
-                    <p class="text-2xl font-black text-red-800">NT$ ${totalOut.toLocaleString()}</p>
-                </div>
-                <div class="p-4 bg-blue-50 border-l-4 border-blue-500 rounded-r-xl shadow-sm">
-                    <p class="text-[10px] text-blue-600 font-bold uppercase tracking-widest">淨利潤</p>
-                    <p class="text-2xl font-black text-blue-800">NT$ ${(totalIn - totalOut).toLocaleString()}</p>
-                </div>
-            `;
-
-            if (chartTrend) chartTrend.destroy();
-            chartTrend = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        { label: '收入', data: inData, backgroundColor: '#22c55e', borderRadius: 4 },
-                        { label: '支出', data: outData, backgroundColor: '#ef4444', borderRadius: 4 },
-                        { label: '純利', data: profitData, type: 'line', borderColor: '#3b82f6', tension: 0.3, borderWidth: 3, pointRadius: 4 }
-                    ]
-                },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
-            });
-        }
-
-            // 6. 其他輔助功能 (切換分頁、日期選擇、模式切換)
-            function switchMainTab(target) {
-            document.getElementById('section-record').classList.toggle('hidden', target !== 'record');
-            document.getElementById('section-report').classList.toggle('hidden', target !== 'report');
-            document.getElementById('tab-record').classList.toggle('tab-active', target === 'record');
-            document.getElementById('tab-report').classList.toggle('tab-active', target === 'report');
-            if(target === 'report') { initYearMonthOptions(); renderReports(); }
-        }
-
-        function initYearMonthOptions() {
-            const ySelect = document.getElementById('reportYearSelect');
-            if (ySelect.options.length > 0) return;
-            const years = [...new Set(db.map(r => String(r.date).split('-')[0]))];
-            const curY = new Date().getFullYear().toString();
-            if (!years.includes(curY)) years.push(curY);
-            years.sort((a,b)=>b-a);
-            ySelect.innerHTML = years.map(y=>`<option value="${y}">${y}年</option>`).join('');
-            const mSelect = document.getElementById('reportMonthSelect');
-            mSelect.innerHTML = Array.from({length:12}, (_,i)=>`<option value="${i+1}">${i+1}月</option>`).join('');
-            mSelect.value = (new Date().getMonth()+1).toString();
-        }
-
-        function changeMode(m) {
-            mode = m;
-            const isInc = m === 'income';
-            document.getElementById('inputCard').className = `bg-white p-6 rounded-3xl shadow-lg border transition-all duration-300 ${isInc?'bg-income-mode':'bg-expense-mode'} ${editingId ? 'editing-mode' : ''}`;
-            document.getElementById('currentStatusTag').innerText = isInc ? "收入模式" : "支出模式";
-            document.getElementById('currentStatusTag').className = `${isInc?'bg-green-600':'bg-red-600'} text-white px-4 py-1 rounded-full text-xs font-bold`;
-            document.getElementById('btn-income').className = isInc ? "py-4 rounded-xl font-bold mode-active shadow-md" : "py-4 rounded-xl font-bold bg-white/50 text-slate-400 border border-slate-200";
-            document.getElementById('btn-expense').className = !isInc ? "py-4 rounded-xl font-bold mode-active shadow-md" : "py-4 rounded-xl font-bold bg-white/50 text-slate-400 border border-slate-200";
-            updateUI();
-        }
-
-        function selectDate(d) { selectedDate = d; updateUI(); }
-        function prevMonth() { viewDate.setMonth(viewDate.getMonth() - 1); updateUI(); }
-        function nextMonth() { viewDate.setMonth(viewDate.getMonth() + 1); updateUI(); }
-
-        // 啟動程式
-        updateUI();
-        loadCloudData();
-    </script>
+    <script src="app.js"></script>
 </body>
 </html>
