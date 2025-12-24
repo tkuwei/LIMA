@@ -32,9 +32,19 @@ body {
 }
 
 /* Tab 按鈕 */
-.tab-btn { color: #94a3b8; border-bottom: 4px solid transparent; transition: 0.3s; }
-.tab-active { border-bottom: 4px solid #f97316; color: #f97316; font-weight: 800; }
-
+.tab-btn { 
+    color: #94a3b8; 
+    border-bottom: 4px solid transparent; 
+    transition: 0.3s; 
+    white-space: nowrap; /* 關鍵：強制文字不折行 */
+    flex: 1;            /* 關鍵：讓兩個按鈕平均分配剩餘空間，確保填滿一排 */
+    text-align: center;  /* 確保文字置中 */
+}
+.tab-active { 
+    border-bottom: 4px solid #f97316; 
+    color: #f97316; 
+    font-weight: 800; 
+}
 /* Toast 容器基礎樣式 */
 #toast {
     visibility: hidden;           /* 預設隱藏 */
